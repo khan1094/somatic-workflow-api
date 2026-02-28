@@ -313,10 +313,6 @@ http://localhost:8000/docs
 
 ![API Swagger UI](readme_images/swagger_ui.png)
 
-<p align="center">
-  <img src="readme_images/swagger_ui.png" width="400">
-</p>
-
 ------------------------------------------------------------------------
 
 # API Endpoints
