@@ -466,11 +466,19 @@ GET /workflows
 
 Returns all submitted workflows.
 
-Swagger UI:
+Swagger UI
 
 1. Open GET /workflows
 2. Click "Try it out"
-3. Click Execute
+3. Optionally provide the following parameters:
+
+* status (string, optional): Filter workflows by phase. Accepted values include: Pending, Running, Succeeded, Failed, Error.
+* limit (integer, optional, default = 20): Maximum number of records to return.
+* offset (integer, optional, default = 0): Starting index for pagination.
+
+4. Click Execute
+
+If no parameters are provided, the endpoint returns the first 20 workflows.
 
 Expected Response:
 
@@ -479,11 +487,23 @@ Expected Response:
   {
     "name": "somatic-api-lbdhq",
     "status": "Succeeded",
-    "created_at": "2026-02-28T04:25:49Z"
+    "created_at": "2026-02-28T04:25:49Z",
+    "started_at": "2026-02-28T04:25:49Z",
+    "finished_at": "2026-02-28T04:26:43Z",
+    "input_sample": "CO8-MA-27_mutect2_vlod.vcf.gz",
+    "node": "k3d-somatic-cluster-agent-1"
   }
 ]
 ```
+Response Fields
 
+* name → Workflow identifier
+* status → Current workflow phase
+* created_at → Workflow creation timestamp
+* started_at → Execution start time
+* finished_at → Execution completion time
+* input_sample → VCF file used as input
+* node → Kubernetes node where the workflow executed
 ---
 
 ## 4. Get Workflow Status
@@ -507,9 +527,14 @@ Expected Response:
 {
   "name": "somatic-api-xxxxx",
   "status": "Succeeded",
+  "created_at": "2026-02-28T00:52:20Z",
   "started_at": "2026-02-28T00:52:26Z",
   "finished_at": "2026-02-28T00:52:46Z",
-  "progress": "1/1"
+  "duration_seconds": 20.0,
+  "progress": "1/1",
+  "input_sample": "CO8-PA-26_mutect2_vlod.vcf.gz",
+  "node": "k3d-somatic-cluster-agent-1",
+  "error_message": null
 }
 ```
 
@@ -626,8 +651,7 @@ This implementation follows a simple and explicit architecture aligned with the 
 The current implementation intentionally keeps scope limited to Task III requirements.
 
 - No authentication or authorization layer for end users.
-- No pagination support on workflow listing endpoint.
-- Real-time updates are implemented using polling (no SSE or WebSocket streaming).
+- Real-time updates are implemented using client-side polling via GET /workflows/{workflow_name}. No SSE or WebSocket streaming is implemented.
 - Completed workflows are not automatically cleaned up from the cluster.
 - File validation is basic (extension and gzip structure check only).
 
@@ -651,13 +675,19 @@ The following sequence verifies correct end-to-end functionality after deploymen
 4. Verify workflow status via API:
    GET /workflows/{workflow_name}
 
-5. Retrieve summarized results:
+   Ensure the response includes:
+    - duration_seconds
+    - input_sample
+    - node
+    - progress
+
+6. Retrieve summarized results:
    GET /workflows/{workflow_name}/results
 
-6. Download raw TSV file:
+7. Download raw TSV file:
    GET /workflows/{workflow_name}/download
 
-7. Verify results file exists on host:
+8. Verify results file exists on host:
    ls ~/refdata/results
 
 ------------------------------------------------------------------------
