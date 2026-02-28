@@ -6,6 +6,7 @@ from app.utils import summarize_results, get_result_file_path
 import os
 import shutil
 import gzip
+from datetime import datetime
 
 app = FastAPI(title="Somatic Workflow API")
 
@@ -31,9 +32,6 @@ async def create_workflow(
 ):
     try:
 
-        # ----------------------------
-        # Mode A — Upload
-        # ----------------------------
         if file and file.filename:
 
             if not file.filename.endswith(".vcf.gz"):
@@ -42,11 +40,9 @@ async def create_workflow(
             os.makedirs(UPLOAD_DIR, exist_ok=True)
             upload_path = os.path.join(UPLOAD_DIR, file.filename)
 
-            # Save file
             with open(upload_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-            # Validate gzip
             try:
                 with gzip.open(upload_path, "rt") as f:
                     f.readline()
@@ -56,9 +52,6 @@ async def create_workflow(
 
             wf = submit_workflow(file.filename, node)
 
-        # ----------------------------
-        # Mode B — Reference
-        # ----------------------------
         elif sample_vcf:
 
             ref_path = os.path.join(UPLOAD_DIR, sample_vcf)
@@ -84,41 +77,113 @@ async def create_workflow(
 
 
 # -----------------------------------
-# List Workflows
+# List Workflows (Filtering + Pagination)
 # -----------------------------------
 @app.get("/workflows")
-def get_all_workflows():
+def get_all_workflows(
+    status: str = None,
+    limit: int = 20,
+    offset: int = 0
+):
     try:
         data = list_workflows()
         items = data.get("items", [])
 
-        return [
-            {
-                "name": wf["metadata"]["name"],
-                "status": wf.get("status", {}).get("phase", "Pending"),
-                "created_at": wf["metadata"].get("creationTimestamp")
-            }
-            for wf in items
-        ]
+        if status:
+            items = [
+                wf for wf in items
+                if wf.get("status", {}).get("phase") == status
+            ]
+
+        items = items[offset:offset + limit]
+
+        response = []
+
+        for wf in items:
+            metadata = wf.get("metadata", {})
+            wf_status = wf.get("status", {})
+            spec = wf.get("spec", {})
+
+            parameters = spec.get("arguments", {}).get("parameters", [])
+            sample_vcf = next(
+                (p.get("value") for p in parameters if p.get("name") == "sample-vcf"),
+                None
+            )
+
+            node = spec.get("nodeSelector", {}).get("kubernetes.io/hostname")
+
+            response.append({
+                "name": metadata.get("name"),
+                "status": wf_status.get("phase"),
+                "created_at": metadata.get("creationTimestamp"),
+                "started_at": wf_status.get("startedAt"),
+                "finished_at": wf_status.get("finishedAt"),
+                "input_sample": sample_vcf,
+                "node": node
+            })
+
+        return response
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # -----------------------------------
-# Get Workflow Status
+# Get Workflow Status (ENHANCED)
 # -----------------------------------
 @app.get("/workflows/{workflow_name}")
 def get_workflow_status(workflow_name: str):
     try:
         wf = get_workflow(workflow_name)
 
+        metadata = wf.get("metadata", {})
+        wf_status = wf.get("status", {})
+        spec = wf.get("spec", {})
+
+        phase = wf_status.get("phase")
+        created_at = metadata.get("creationTimestamp")
+        started_at = wf_status.get("startedAt")
+        finished_at = wf_status.get("finishedAt")
+        progress = wf_status.get("progress")
+
+        # Extract input sample
+        parameters = spec.get("arguments", {}).get("parameters", [])
+        sample_vcf = next(
+            (p.get("value") for p in parameters if p.get("name") == "sample-vcf"),
+            None
+        )
+
+        # Extract node
+        node = spec.get("nodeSelector", {}).get("kubernetes.io/hostname")
+
+        # Duration calculation
+        duration = None
+        if started_at and finished_at:
+            try:
+                start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                end = datetime.fromisoformat(finished_at.replace("Z", "+00:00"))
+                duration = (end - start).total_seconds()
+            except Exception:
+                duration = None
+
+        # Error extraction (if failed)
+        error_message = None
+        if phase in ["Failed", "Error"]:
+            error_message = wf_status.get("message")
+
         return {
-            "name": wf["metadata"]["name"],
-            "status": wf.get("status", {}).get("phase"),
-            "started_at": wf.get("status", {}).get("startedAt"),
-            "finished_at": wf.get("status", {}).get("finishedAt"),
-            "progress": wf.get("status", {}).get("progress")
+            "name": metadata.get("name"),
+            "status": phase,
+            "created_at": created_at,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "duration_seconds": duration,
+            "progress": progress,
+            "input_sample": sample_vcf,
+            "node": node,
+            "error_message": error_message
         }
+
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -151,7 +216,6 @@ def list_nodes():
 # -----------------------------------
 @app.get("/workflows/{workflow_name}/results")
 def get_workflow_results(workflow_name: str):
-
     try:
         wf = get_workflow(workflow_name)
         status = wf.get("status", {}).get("phase")
