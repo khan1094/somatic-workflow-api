@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somatic-api
+  namespace: argo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somatic-api
+  template:
+    metadata:
+      labels:
+        app: somatic-api
+    spec:
+      serviceAccountName: somatic-api-sa
+      containers:
+        - name: somatic-api
+          image: somatic-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: UPLOAD_DIR
+              value: "/refdata/samples"
+            - name: ARGO_HOST
+              value: "https://argo-server.argo.svc.cluster.local:2746"
+          volumeMounts:
+            - name: refdata
+              mountPath: /refdata
+      volumes:
+        - name: refdata
+          hostPath:
+            path: /refdata
+            type: Directory
