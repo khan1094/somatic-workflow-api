@@ -472,9 +472,9 @@ Swagger UI
 2. Click "Try it out"
 3. Optionally provide the following parameters:
 
-* status (string, optional): Filter workflows by phase. Accepted values include: Pending, Running, Succeeded, Failed, Error.
-* limit (integer, optional, default = 20): Maximum number of records to return.
-* offset (integer, optional, default = 0): Starting index for pagination.
+    * status (string, optional): Filter workflows by phase. Accepted values include: Pending, Running, Succeeded, Failed, Error.
+    * limit (integer, optional, default = 20): Maximum number of records to return.
+    * offset (integer, optional, default = 0): Starting index for pagination.
 
 4. Click Execute
 
