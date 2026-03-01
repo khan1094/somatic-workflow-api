@@ -12,18 +12,10 @@ app = FastAPI(title="Somatic Workflow API")
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/refdata/samples")
 
-
-# -----------------------------------
-# Health Check
-# -----------------------------------
 @app.get("/")
 def health():
     return {"status": "ok"}
 
-
-# -----------------------------------
-# Create Workflow (Upload + Reference Mode)
-# -----------------------------------
 @app.post("/workflows")
 async def create_workflow(
     sample_vcf: str = Form(None),
@@ -75,10 +67,6 @@ async def create_workflow(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# -----------------------------------
-# List Workflows (Filtering + Pagination)
-# -----------------------------------
 @app.get("/workflows")
 def get_all_workflows(
     status: str = None,
@@ -127,10 +115,6 @@ def get_all_workflows(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# -----------------------------------
-# Get Workflow Status (ENHANCED)
-# -----------------------------------
 @app.get("/workflows/{workflow_name}")
 def get_workflow_status(workflow_name: str):
     try:
@@ -146,17 +130,14 @@ def get_workflow_status(workflow_name: str):
         finished_at = wf_status.get("finishedAt")
         progress = wf_status.get("progress")
 
-        # Extract input sample
         parameters = spec.get("arguments", {}).get("parameters", [])
         sample_vcf = next(
             (p.get("value") for p in parameters if p.get("name") == "sample-vcf"),
             None
         )
 
-        # Extract node
         node = spec.get("nodeSelector", {}).get("kubernetes.io/hostname")
 
-        # Duration calculation
         duration = None
         if started_at and finished_at:
             try:
@@ -166,7 +147,6 @@ def get_workflow_status(workflow_name: str):
             except Exception:
                 duration = None
 
-        # Error extraction (if failed)
         error_message = None
         if phase in ["Failed", "Error"]:
             error_message = wf_status.get("message")
@@ -187,10 +167,6 @@ def get_workflow_status(workflow_name: str):
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-
-# -----------------------------------
-# Cancel Workflow
-# -----------------------------------
 @app.delete("/workflows/{workflow_name}")
 def cancel_workflow(workflow_name: str):
     try:
@@ -199,10 +175,6 @@ def cancel_workflow(workflow_name: str):
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-
-# -----------------------------------
-# List Nodes
-# -----------------------------------
 @app.get("/nodes")
 def list_nodes():
     try:
@@ -210,10 +182,6 @@ def list_nodes():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# -----------------------------------
-# Get Workflow Results Summary
-# -----------------------------------
 @app.get("/workflows/{workflow_name}/results")
 def get_workflow_results(workflow_name: str):
     try:
@@ -241,10 +209,6 @@ def get_workflow_results(workflow_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# -----------------------------------
-# Download Raw Results
-# -----------------------------------
 @app.get("/workflows/{workflow_name}/download")
 def download_results(workflow_name: str):
 
