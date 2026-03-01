@@ -102,7 +102,7 @@ Run:
 kubectl get nodes
 ```
 
-Expected output (1 server + 3 agents in Ready state):
+Example output (1 server + 3 agents in Ready state):
 
 ```bash
 NAME                           STATUS   ROLES                  AGE   VERSION
@@ -124,7 +124,7 @@ Run:
 kubectl get pods -n argo
 ```
 
-Expected output should include:
+The output should includes two rows below:
 
 ```bash
 NAME                                   READY   STATUS    RESTARTS   AGE
@@ -144,7 +144,7 @@ Run:
 kubectl get workflowtemplates -n argo
 ```
 
-Expected output:
+Example output:
 
 ```bash
 NAME                           AGE
@@ -163,12 +163,13 @@ Run:
 kubectl get workflows -n argo
 ```
 
-Expected output should show previously executed workflows from Task II:
+The output should include workflows previously executed during Task II, with at least one workflow in Succeeded state.
+
+Example output:
 
 ```bash
 NAME                                STATUS      AGE
 somatic-classifier-template-xxxxx   Succeeded   9d
-somatic-classifier-template-yyyyy   Succeeded   9d
 ```
 
 At least one workflow should be in Succeeded state.
@@ -202,23 +203,20 @@ samples/
 results/
 ```
 
-Verify that results were generated in Task II:
+Verify that the results directory exists:
 
 ```bash
 ls ~/refdata/results
 ```
 
-Expected:
-
-```bash
-somatic-classifier-template-xxxxx.tsv
-```
+The directory may contain previously generated .tsv result files if workflows were executed in Task II.
+If no workflows have been executed yet, the directory may be empty. However, the ~/refdata/results directory must exist.
 
 This confirms that:
 
-- The shared volume exists
-- Workflow pods successfully wrote output
-- The infrastructure is fully functional
+- The shared volume exists on the host
+- The directory structure required by the workflows is present
+- The cluster has access to persistent shared storage
 
 ---
 
@@ -235,7 +233,7 @@ docker build -t somatic-api:latest .
 
 ```
 
-Expected Output:
+The process should end successfully like below:
 
 ```bash
 [+] Building 125.4s (12/12) FINISHED                            docker:default
@@ -250,7 +248,8 @@ Expected Output:
 ```bash
 k3d image import somatic-api:latest -c somatic-cluster
 ```
-Expected Output:
+
+Example Output:
 
 ```bash
 ...
@@ -269,7 +268,7 @@ kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 ```
 
-Expected Output:
+Example Output:
 
 ```bash
 serviceaccount/somatic-api-sa created
@@ -289,7 +288,7 @@ kubectl get pods -n argo
 
 The somatic-api pod must be in Running state.
 
-Expected Output:
+Example Output:
 
 ```bash
 NAME                                   READY   STATUS      RESTARTS      AGE
@@ -348,7 +347,7 @@ Swagger UI:
 2. Click "Try it out"
 3. Click Execute
 
-Expected Response:
+Example Response:
 
 ```json
 [
@@ -490,7 +489,7 @@ Expected Response:
     "created_at": "2026-02-28T04:25:49Z",
     "started_at": "2026-02-28T04:25:49Z",
     "finished_at": "2026-02-28T04:26:43Z",
-    "input_sample": "CO8-MA-27_mutect2_vlod.vcf.gz",
+    "input_sample": "CO8-PA-26_mutect2_vlod.vcf.gz",
     "node": "k3d-somatic-cluster-agent-1"
   }
 ]
@@ -555,18 +554,18 @@ Swagger UI:
 3. Enter workflow_name
 4. Click Execute
 
-Expected Response:
+Example Response:
 
 ```json
 {
-  "workflow_name": "somatic-api-lbdhq",
+  "workflow_name": "somatic-api-sfdtr",
   "status": "Succeeded",
-  "output_file": "/refdata/results/somatic-api-lbdhq.tsv",
+  "output_file": "/refdata/results/somatic-api-sfdtr.tsv",
   "summary": {
-    "LIKELY_GERMLINE": 725,
-    "UNKNOWN": 1751,
-    "CONFLICTING": 169,
-    "LIKELY_SOMATIC": 58
+    "UNKNOWN": 1852,
+    "LIKELY_GERMLINE": 721,
+    "CONFLICTING": 156,
+    "LIKELY_SOMATIC": 64
   }
 }
 ```
